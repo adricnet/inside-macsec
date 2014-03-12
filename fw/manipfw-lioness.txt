@@ -1,0 +1,1446 @@
+
+IPFW(8)                   BSD System Manager's Manual                  IPFW(8)
+
+NNAAMMEE
+     iippffww -- IP firewall and traffic shaper control program (DEPRECATED)
+
+SSYYNNOOPPSSIISS
+     iippffww [--ccqq] aadddd _r_u_l_e
+     iippffww [--aaccddeeffnnNNSSttTT] {lliisstt | sshhooww} [_r_u_l_e | _f_i_r_s_t_-_l_a_s_t _._._.]
+     iippffww [--ff | --qq] fflluusshh
+     iippffww [--qq] {ddeelleettee | zzeerroo | rreesseettlloogg} [sseett] [_n_u_m_b_e_r _._._.]
+     iippffww eennaabbllee {ffiirreewwaallll | oonnee__ppaassss | ddeebbuugg | vveerrbboossee | ddyynn__kkeeeeppaalliivvee}
+     iippffww ddiissaabbllee {ffiirreewwaallll | oonnee__ppaassss | ddeebbuugg | vveerrbboossee | ddyynn__kkeeeeppaalliivvee}
+
+     iippffww sseett [ddiissaabbllee _n_u_m_b_e_r _._._.] [eennaabbllee _n_u_m_b_e_r _._._.]
+     iippffww sseett mmoovvee [rruullee] _n_u_m_b_e_r ttoo _n_u_m_b_e_r
+     iippffww sseett sswwaapp _n_u_m_b_e_r _n_u_m_b_e_r
+     iippffww sseett sshhooww
+
+     iippffww {ppiippee | qquueeuuee} _n_u_m_b_e_r ccoonnffiigg _c_o_n_f_i_g_-_o_p_t_i_o_n_s
+     iippffww [--ss [_f_i_e_l_d]] {ppiippee | qquueeuuee} {ddeelleettee | lliisstt | sshhooww} [_n_u_m_b_e_r _._._.]
+
+     iippffww [--ccnnNNqqSS] [--pp _p_r_e_p_r_o_c [_p_r_e_p_r_o_c_-_f_l_a_g_s]] _p_a_t_h_n_a_m_e
+
+DDEESSCCRRIIPPTTIIOONN
+     Note that use of this utility is DDEEPPRREECCAATTEEDD.. Please use pfctl(8) instead.
+
+     The iippffww utility is the user interface for controlling the ipfw(4) fire-
+     wall and the dummynet(4) traffic shaper.
+
+     An iippffww configuration, or _r_u_l_e_s_e_t, is made of a list of _r_u_l_e_s numbered
+     from 1 to 65535.  Packets are passed to iippffww from a number of different
+     places in the protocol stack (depending on the source and destination of
+     the packet, it is possible that iippffww is invoked multiple times on the
+     same packet).  The packet passed to the firewall is compared against each
+     of the rules in the firewall _r_u_l_e_s_e_t.  When a match is found, the action
+     corresponding to the matching rule is performed.
+
+     Depending on the action and certain system settings, packets can be rein-
+     jected into the firewall at some rule after the matching one for further
+     processing.
+
+     An iippffww ruleset always includes a _d_e_f_a_u_l_t rule (numbered 65535) which
+     cannot be modified or deleted, and matches all packets.  The action asso-
+     ciated with the _d_e_f_a_u_l_t rule can be either ddeennyy or aallllooww depending on how
+     the kernel is configured.
+
+     If the ruleset includes one or more rules with the kkeeeepp--ssttaattee or lliimmiitt
+     option, then iippffww assumes a _s_t_a_t_e_f_u_l behaviour, i.e. upon a match it will
+     create dynamic rules matching the exact parameters (addresses and ports)
+     of the matching packet.
+
+     These dynamic rules, which have a limited lifetime, are checked at the
+     first occurrence of a cchheecckk--ssttaattee, kkeeeepp--ssttaattee or lliimmiitt rule, and are typ-
+     ically used to open the firewall on-demand to legitimate traffic only.
+     See the _S_T_A_T_E_F_U_L _F_I_R_E_W_A_L_L and _E_X_A_M_P_L_E_S Sections below for more informa-
+     tion on the stateful behaviour of iippffww.
+
+     All rules (including dynamic ones) have a few associated counters: a
+     packet count, a byte count, a log count and a timestamp indicating the
+     time of the last match.  Counters can be displayed or reset with iippffww
+     commands.
+
+     Rules can be added with the aadddd command; deleted individually or in
+     groups with the ddeelleettee command, and globally (except those in set 31)
+     with the fflluusshh command; displayed, optionally with the content of the
+     counters, using the sshhooww and lliisstt commands.  Finally, counters can be
+     reset with the zzeerroo and rreesseettlloogg commands.
+
+     Also, each rule belongs to one of 32 different _s_e_t_s , and there are iippffww
+     commands to atomically manipulate sets, such as enable, disable, swap
+     sets, move all rules in a set to another one, delete all rules in a set.
+     These can be useful to install temporary configurations, or to test them.
+     See Section _S_E_T_S _O_F _R_U_L_E_S for more information on _s_e_t_s.
+
+     The following options are available:
+
+     --aa      While listing, show counter values.  The sshhooww command just
+             implies this option.
+
+     --cc      When entering or showing rules, print them in compact form, i.e.
+             without the optional "ip from any to any" string when this does
+             not carry any additional information.
+
+     --dd      While listing, show dynamic rules in addition to static ones.
+
+     --ee      While listing, if the --dd option was specified, also show expired
+             dynamic rules.
+
+     --ff      Don't ask for confirmation for commands that can cause problems
+             if misused, i.e. fflluusshh.  If there is no tty associated with the
+             process, this is implied.
+
+     --nn      Only check syntax of the command strings, without actually pass-
+             ing them to the kernel.
+
+     --NN      Try to resolve addresses and service names in output.
+
+     --qq      While aadddding, zzeerrooing, rreesseettllooggging or fflluusshhing, be quiet about
+             actions (implies --ff).  This is useful for adjusting rules by exe-
+             cuting multiple iippffww commands in a script (e.g.,
+             `sh /etc/rc.firewall'), or by processing a file of many iippffww
+             rules across a remote login session.  If a fflluusshh is performed in
+             normal (verbose) mode (with the default kernel configuration), it
+             prints a message.  Because all rules are flushed, the message
+             might not be delivered to the login session, causing the remote
+             login session to be closed and the remainder of the ruleset to
+             not be processed.  Access to the console would then be required
+             to recover.
+
+     --SS      While listing rules, show the _s_e_t each rule belongs to.  If this
+             flag is not specified, disabled rules will not be listed.
+
+     --ss [_f_i_e_l_d]
+             While listing pipes, sort according to one of the four counters
+             (total or current packets or bytes).
+
+     --tt      While listing, show last match timestamp (converted with
+             ctime()).
+
+     --TT      While listing, show last match timestamp (as seconds from the
+             epoch).  This form can be more convenient for postprocessing by
+             scripts.
+
+     To ease configuration, rules can be put into a file which is processed
+     using iippffww as shown in the last synopsis line.  An absolute _p_a_t_h_n_a_m_e must
+     be used.  The file will be read line by line and applied as arguments to
+     the iippffww utility.
+
+     Optionally, a preprocessor can be specified using --pp _p_r_e_p_r_o_c where
+     _p_a_t_h_n_a_m_e is to be piped through.  Useful preprocessors include cpp(1) and
+     m4(1).  If _p_r_e_p_r_o_c doesn't start with a slash (`/') as its first charac-
+     ter, the usual PATH name search is performed.  Care should be taken with
+     this in environments where not all file systems are mounted (yet) by the
+     time iippffww is being run (e.g. when they are mounted over NFS).  Once --pp
+     has been specified, any additional arguments as passed on to the pre-
+     processor for interpretation.  This allows for flexible configuration
+     files (like conditionalizing them on the local hostname) and the use of
+     macros to centralize frequently required arguments like IP addresses.
+
+     The iippffww ppiippee and qquueeuuee commands are used to configure the traffic
+     shaper, as shown in the _T_R_A_F_F_I_C _S_H_A_P_E_R _(_D_U_M_M_Y_N_E_T_) _C_O_N_F_I_G_U_R_A_T_I_O_N Section
+     below.
+
+     If the world and the kernel get out of sync the iippffww ABI may break, pre-
+     venting you from being able to add any rules.  This can adversely effect
+     the booting process.  You can use iippffww ddiissaabbllee ffiirreewwaallll to temporarily
+     disable the firewall to regain access to the network, allowing you to fix
+     the problem.
+
+PPAACCKKEETT FFLLOOWW
+     A packet is checked against the active ruleset in multiple places in the
+     protocol stack, under control of several sysctl variables.  These places
+     and variables are shown below, and it is important to have this picture
+     in mind in order to design a correct ruleset.
+
+                 ^     to upper layers   V
+                 |                       |
+                 +----------->-----------+
+                 ^                       V
+            [ip_input]              [ip_output]   net.inet.ip.fw.enable=1
+                 |                       |
+                 ^                       V
+           [ether_demux]    [ether_output_frame]  net.link.ether.ipfw=1
+                 |                       |
+                 +-->--[bdg_forward]-->--+        net.link.ether.bridge_ipfw=1
+                 ^                       V
+                 |      to devices       |
+
+     As can be noted from the above picture, the number of times the same
+     packet goes through the firewall can vary between 0 and 4 depending on
+     packet source and destination, and system configuration.
+
+     Note that as packets flow through the stack, headers can be stripped or
+     added to it, and so they may or may not be available for inspection.
+     E.g., incoming packets will include the MAC header when iippffww is invoked
+     from eetthheerr__ddeemmuuxx(()), but the same packets will have the MAC header
+     stripped off when iippffww is invoked from iipp__iinnppuutt(()).
+
+     Also note that each packet is always checked against the complete rule-
+     set, irrespective of the place where the check occurs, or the source of
+     the packet.  If a rule contains some match patterns or actions which are
+     not valid for the place of invocation (e.g. trying to match a MAC header
+     within iipp__iinnppuutt(()) ), the match pattern will not match, but a nnoott operator
+     in front of such patterns _w_i_l_l cause the pattern to _a_l_w_a_y_s match on those
+     packets.  It is thus the responsibility of the programmer, if necessary,
+     to write a suitable ruleset to differentiate among the possible places.
+     sskkiippttoo rules can be useful here, as an example:
+
+           # packets from ether_demux or bdg_forward
+           ipfw add 10 skipto 1000 all from any to any layer2 in
+           # packets from ip_input
+           ipfw add 10 skipto 2000 all from any to any not layer2 in
+           # packets from ip_output
+           ipfw add 10 skipto 3000 all from any to any not layer2 out
+           # packets from ether_output_frame
+           ipfw add 10 skipto 4000 all from any to any layer2 out
+
+     (yes, at the moment there is no way to differentiate between ether_demux
+     and bdg_forward).
+
+SSYYNNTTAAXX
+     In general, each keyword or argument must be provided as a separate com-
+     mand line argument, with no leading or trailing spaces. Keywords are
+     case-sensitive, whereas arguments may or may not be case-sensitive
+     depending on their nature (e.g. uid's are, hostnames are not).
+
+     In iippffww22 you can introduce spaces after commas ',' to make the line more
+     readable. You can also put the entire command (including flags) into a
+     single argument.  E.g. the following forms are equivalent:
+
+           ipfw -q add deny src-ip 10.0.0.0/24,127.0.0.1/8
+           ipfw -q add deny src-ip 10.0.0.0/24, 127.0.0.1/8
+           ipfw "-q add deny src-ip 10.0.0.0/24, 127.0.0.1/8"
+
+RRUULLEE FFOORRMMAATT
+     The format of iippffww rules is the following:
+
+           [_r_u_l_e___n_u_m_b_e_r] [sseett _s_e_t___n_u_m_b_e_r] [pprroobb _m_a_t_c_h___p_r_o_b_a_b_i_l_i_t_y]
+               _a_c_t_i_o_n [lloogg [llooggaammoouunntt _n_u_m_b_e_r]] _b_o_d_y
+
+     where the body of the rule specifies which information is used for fil-
+     tering packets, among the following:
+
+        Layer-2 header fields                 When available
+        IPv4 Protocol                         TCP, UDP, ICMP, etc.
+        Source and dest. addresses and ports
+        Direction                             See Section _P_A_C_K_E_T _F_L_O_W
+        Transmit and receive interface        By name or address
+        Misc. IP header fields                Version, type of service, data-
+                                              gram length, identification,
+                                              fragment flag (non-zero IP off-
+                                              set), Time To Live
+        IP options
+        Misc. TCP header fields               TCP flags (SYN, FIN, ACK, RST,
+                                              etc.), sequence number, acknowl-
+                                              edgment number, window
+        TCP options
+        ICMP types                            for ICMP packets
+        User/group ID                         When the packet can be associ-
+                                              ated with a local socket.
+
+     Note that some of the above information, e.g. source MAC or IP addresses
+     and TCP/UDP ports, could easily be spoofed, so filtering on those fields
+     alone might not guarantee the desired results.
+
+     _r_u_l_e___n_u_m_b_e_r
+             Each rule is associated with a _r_u_l_e___n_u_m_b_e_r in the range 1..65535,
+             with the latter reserved for the _d_e_f_a_u_l_t rule.  Rules are checked
+             sequentially by rule number.  Multiple rules can have the same
+             number, in which case they are checked (and listed) according to
+             the order in which they have been added.  If a rule is entered
+             without specifying a number, the kernel will assign one in such a
+             way that the rule becomes the last one before the _d_e_f_a_u_l_t rule.
+             Automatic rule numbers are assigned by incrementing the last non-
+             default rule number by the value of the sysctl variable
+             _n_e_t_._i_n_e_t_._i_p_._f_w_._a_u_t_o_i_n_c___s_t_e_p which defaults to 100.  If this is
+             not possible (e.g. because we would go beyond the maximum allowed
+             rule number), the number of the last non-default value is used
+             instead.
+
+     sseett _s_e_t___n_u_m_b_e_r
+             Each rule is associated with a _s_e_t___n_u_m_b_e_r in the range 0..31.
+             Sets can be individually disabled and enabled, so this parameter
+             is of fundamental importance for atomic ruleset manipulation.  It
+             can be also used to simplify deletion of groups of rules.  If a
+             rule is entered without specifying a set number, set 0 will be
+             used.
+             Set 31 is special in that it cannot be disabled, and rules in set
+             31 are not deleted by the iippffww fflluusshh command (but you can delete
+             them with the iippffww ddeelleettee sseett 3311 command).  Set 31 is also used
+             for the _d_e_f_a_u_l_t rule.
+
+     pprroobb _m_a_t_c_h___p_r_o_b_a_b_i_l_i_t_y
+             A match is only declared with the specified probability (floating
+             point number between 0 and 1).  This can be useful for a number
+             of applications such as random packet drop or (in conjunction
+             with dummynet(4)) to simulate the effect of multiple paths lead-
+             ing to out-of-order packet delivery.
+
+             Note: this condition is checked before any other condition,
+             including ones such as keep-state or check-state which might have
+             side effects.
+
+     lloogg [llooggaammoouunntt _n_u_m_b_e_r]
+             When a packet matches a rule with the lloogg keyword, a message will
+             be logged to syslogd(8) with a LOG_SECURITY facility.  The log-
+             ging only occurs if the sysctl variable _n_e_t_._i_n_e_t_._i_p_._f_w_._v_e_r_b_o_s_e is
+             set to 1 (which is the default when the kernel is compiled with
+             IPFIREWALL_VERBOSE ) and the number of packets logged so far for
+             that particular rule does not exceed the llooggaammoouunntt parameter.  If
+             no llooggaammoouunntt is specified, the limit is taken from the sysctl
+             variable _n_e_t_._i_n_e_t_._i_p_._f_w_._v_e_r_b_o_s_e___l_i_m_i_t.  In both cases, a value of
+             0 removes the logging limit.
+
+             Once the limit is reached, logging can be re-enabled by clearing
+             the logging counter or the packet counter for that entry, see the
+             rreesseettlloogg command.
+
+             Note: logging is done after all other packet matching conditions
+             have been successfully verified, and before performing the final
+             action (accept, deny, etc.) on the packet.
+
+   RRUULLEE AACCTTIIOONNSS
+     A rule can be associated with one of the following actions, which will be
+     executed when the packet matches the body of the rule.
+
+     aallllooww | aacccceepptt | ppaassss | ppeerrmmiitt
+             Allow packets that match rule.  The search terminates.
+
+     cchheecckk--ssttaattee
+             Checks the packet against the dynamic ruleset.  If a match is
+             found, execute the action associated with the rule which gener-
+             ated this dynamic rule, otherwise move to the next rule.
+             CChheecckk--ssttaattee rules do not have a body.  If no cchheecckk--ssttaattee rule is
+             found, the dynamic ruleset is checked at the first kkeeeepp--ssttaattee or
+             lliimmiitt rule.
+
+     ccoouunntt   Update counters for all packets that match rule.  The search con-
+             tinues with the next rule.
+
+     ddeennyy | ddrroopp
+             Discard packets that match this rule.  The search terminates.
+
+     ddiivveerrtt _p_o_r_t
+             Divert packets that match this rule to the divert(4) socket bound
+             to port _p_o_r_t.  The search terminates.
+
+     ffwwdd | ffoorrwwaarrdd _i_p_a_d_d_r[,_p_o_r_t]
+             Change the next-hop on matching packets to _i_p_a_d_d_r, which can be
+             an IP address in dotted quad format or a host name.  The search
+             terminates if this rule matches.
+
+             If _i_p_a_d_d_r is a local address, then matching packets will be for-
+             warded to _p_o_r_t (or the port number in the packet if one is not
+             specified in the rule) on the local machine.
+             If _i_p_a_d_d_r is not a local address, then the port number (if speci-
+             fied) is ignored, and the packet will be forwarded to the remote
+             address, using the route as found in the local routing table for
+             that IP.
+             A _f_w_d rule will not match layer-2 packets (those received on
+             ether_input, ether_output, or bridged).
+             The ffwwdd action does not change the contents of the packet at all.
+             In particular, the destination address remains unmodified, so
+             packets forwarded to another system will usually be rejected by
+             that system unless there is a matching rule on that system to
+             capture them.  For packets forwarded locally, the local address
+             of the socket will be set to the original destination address of
+             the packet.  This makes the netstat(1) entry look rather weird
+             but is intended for use with transparent proxy servers.
+
+     ppiippee _p_i_p_e___n_r
+             Pass packet to a dummynet(4) ``pipe'' (for bandwidth limitation,
+             delay, etc.).  See the _T_R_A_F_F_I_C _S_H_A_P_E_R _(_D_U_M_M_Y_N_E_T_) _C_O_N_F_I_G_U_R_A_T_I_O_N
+             Section for further information.  The search terminates; however,
+             on exit from the pipe and if the sysctl(8) variable
+             _n_e_t_._i_n_e_t_._i_p_._f_w_._o_n_e___p_a_s_s is not set, the packet is passed again to
+             the firewall code starting from the next rule.
+
+     qquueeuuee _q_u_e_u_e___n_r
+             Pass packet to a dummynet(4) ``queue'' (for bandwidth limitation
+             using WF2Q+).
+
+     rreejjeecctt  (Deprecated).  Synonym for uunnrreeaacchh hhoosstt.
+
+     rreesseett   Discard packets that match this rule, and if the packet is a TCP
+             packet, try to send a TCP reset (RST) notice.  The search termi-
+             nates.
+
+     sskkiippttoo _n_u_m_b_e_r
+             Skip all subsequent rules numbered less than _n_u_m_b_e_r.  The search
+             continues with the first rule numbered _n_u_m_b_e_r or higher.
+
+     tteeee _p_o_r_t
+             Send a copy of packets matching this rule to the divert(4) socket
+             bound to port _p_o_r_t.  The search terminates and the original
+             packet is accepted (but see Section _B_U_G_S below).
+
+     uunnrreeaacchh _c_o_d_e
+             Discard packets that match this rule, and try to send an ICMP
+             unreachable notice with code _c_o_d_e, where _c_o_d_e is a number from 0
+             to 255, or one of these aliases: nneett, hhoosstt, pprroottooccooll, ppoorrtt,
+             nneeeeddffrraagg, ssrrccffaaiill, nneett--uunnkknnoowwnn, hhoosstt--uunnkknnoowwnn, iissoollaatteedd,
+             nneett--pprroohhiibb, hhoosstt--pprroohhiibb, ttoossnneett, ttoosshhoosstt, ffiilltteerr--pprroohhiibb,
+             hhoosstt--pprreecceeddeennccee or pprreecceeddeennccee--ccuuttooffff.  The search terminates.
+
+   RRUULLEE BBOODDYY
+     The body of a rule contains zero or more patterns (such as specific
+     source and destination addresses or ports, protocol options, incoming or
+     outgoing interfaces, etc.)  that the packet must match in order to be
+     recognised.  In general, the patterns are connected by (implicit) aanndd
+     operators -- i.e. all must match in order for the rule to match.  Indi-
+     vidual patterns can be prefixed by the nnoott operator to reverse the result
+     of the match, as in
+
+           ipfw add 100 allow ip from not 1.2.3.4 to any
+
+     Additionally, sets of alternative match patterns ( _o_r_-_b_l_o_c_k_s ) can be
+     constructed by putting the patterns in lists enclosed between parentheses
+     ( ) or braces { }, and using the oorr operator as follows:
+
+           ipfw add 100 allow ip from { x or not y or z } to any
+
+     Only one level of parentheses is allowed.  Beware that most shells have
+     special meanings for parentheses or braces, so it is advisable to put a
+     backslash \ in front of them to prevent such interpretations.
+
+     The body of a rule must in general include a source and destination
+     address specifier.  The keyword _a_n_y can be used in various places to
+     specify that the content of a required field is irrelevant.
+
+     The rule body has the following format:
+
+           [_p_r_o_t_o ffrroomm _s_r_c ttoo _d_s_t] [_o_p_t_i_o_n_s]
+
+     The first part (proto from src to dst) is for backward compatibility with
+     iippffww11.  In iippffww22 any match pattern (including MAC headers, IPv4 proto-
+     cols, addresses and ports) can be specified in the _o_p_t_i_o_n_s section.
+
+     Rule fields have the following meaning:
+
+     _p_r_o_t_o: _p_r_o_t_o_c_o_l | {{ _p_r_o_t_o_c_o_l oorr ...... }}
+
+     _p_r_o_t_o_c_o_l: [nnoott] _p_r_o_t_o_c_o_l_-_n_a_m_e | _p_r_o_t_o_c_o_l_-_n_u_m_b_e_r
+             An IPv4 protocol specified by number or name (for a complete list
+             see _/_e_t_c_/_p_r_o_t_o_c_o_l_s).  The iipp or aallll keywords mean any protocol
+             will match.
+
+             The {{ _p_r_o_t_o_c_o_l oorr ...... }} format (an _o_r_-_b_l_o_c_k) is provided for con-
+             venience only but its use is deprecated.
+
+     _s_r_c and _d_s_t: {aaddddrr | {{ _a_d_d_r oorr ...... }}} [[nnoott] _p_o_r_t_s]
+             An address (or a list, see below) optionally followed by _p_o_r_t_s
+             specifiers.
+
+             The second format ( _o_r_-_b_l_o_c_k with multiple addresses) is provided
+             for convenience only and its use is discouraged.
+
+     _a_d_d_r: [nnoott] {aannyy | mmee | _a_d_d_r_-_l_i_s_t | _a_d_d_r_-_s_e_t}
+
+     aannyy     matches any IP address.
+
+     mmee      matches any IP address configured on an interface in the system.
+             The address list is evaluated at the time the packet is analysed.
+
+     _a_d_d_r_-_l_i_s_t: _i_p_-_a_d_d_r[,_a_d_d_r_-_l_i_s_t]
+
+     _i_p_-_a_d_d_r:
+             A host or subnet address specified in one of the following ways:
+
+             _n_u_m_e_r_i_c_-_i_p | _h_o_s_t_n_a_m_e
+                     Matches a single IPv4 address, specified as dotted-quad
+                     or a hostname.  Hostnames are resolved at the time the
+                     rule is added to the firewall list.
+
+             _a_d_d_r/_m_a_s_k_l_e_n
+                     Matches all addresses with base _a_d_d_r (specified as a dot-
+                     ted quad or a hostname) and mask width of mmaasskklleenn bits.
+                     As an example, 1.2.3.4/25 will match all IP numbers from
+                     1.2.3.0 to 1.2.3.127 .
+
+             _a_d_d_r:_m_a_s_k
+                     Matches all addresses with base _a_d_d_r (specified as a dot-
+                     ted quad or a hostname) and the mask of _m_a_s_k, specified
+                     as a dotted quad.  As an example, 1.2.3.4/255.0.255.0
+                     will match 1.*.3.*.  We suggest to use this form only for
+                     non-contiguous masks, and resort to the _a_d_d_r/_m_a_s_k_l_e_n for-
+                     mat for contiguous masks, which is more compact and less
+                     error-prone.
+
+     _a_d_d_r_-_s_e_t: _a_d_d_r[/_m_a_s_k_l_e_n]{{_l_i_s_t}}
+
+     _l_i_s_t: {_n_u_m | _n_u_m_-_n_u_m}[,_l_i_s_t]
+             Matches all addresses with base address _a_d_d_r (specified as a dot-
+             ted quad or a hostname) and whose last byte is in the list
+             between braces { } .  Note that there must be no spaces between
+             braces and numbers (spaces after commas are allowed).  Elements
+             of the list can be specified as single entries or ranges.  The
+             _m_a_s_k_l_e_n field is used to limit the size of the set of addresses,
+             and can have any value between 24 and 32. If not specified, it
+             will be assumed as 24.
+             This format is particularly useful to handle sparse address sets
+             within a single rule. Because the matching occurs using a bit-
+             mask, it takes constant time and dramatically reduces the com-
+             plexity of rulesets.
+             As an example, an address specified as 1.2.3.4/24{128,35-55,89}
+             will match the following IP addresses:
+             1.2.3.128, 1.2.3.35 to 1.2.3.55, 1.2.3.89 .
+
+     _p_o_r_t_s: {_p_o_r_t | _p_o_r_t-_p_o_r_t}[,_p_o_r_t_s]
+             For protocols which support port numbers (such as TCP and UDP),
+             optional ppoorrttss may be specified as one or more ports or port
+             ranges, separated by commas but no spaces, and an optional nnoott
+             operator.  The `-' notation specifies a range of ports (including
+             boundaries).
+
+             Service names (from _/_e_t_c_/_s_e_r_v_i_c_e_s) may be used instead of numeric
+             port values.  The length of the port list is limited to 30 ports
+             or ranges, though one can specify larger ranges by using an
+             _o_r_-_b_l_o_c_k in the ooppttiioonnss section of the rule.
+
+             A backslash (`\') can be used to escape the dash (`-') character
+             in a service name (from a shell, the backslash must be typed
+             twice to avoid the shell itself interpreting it as an escape
+             character).
+
+                   ipfw add count tcp from any ftp\\-data-ftp to any
+
+             Fragmented packets which have a non-zero offset (i.e. not the
+             first fragment) will never match a rule which has one or more
+             port specifications.  See the ffrraagg option for details on matching
+             fragmented packets.
+
+   RRUULLEE OOPPTTIIOONNSS ((MMAATTCCHH PPAATTTTEERRNNSS))
+     Additional match patterns can be used within rules. Zero or more of these
+     so-called _o_p_t_i_o_n_s can be present in a rule, optionally prefixed by the
+     nnoott operand, and possibly grouped into _o_r_-_b_l_o_c_k_s.
+
+     The following match patterns can be used (listed in alphabetical order):
+
+     //// tthhiiss iiss aa ccoommmmeenntt..
+             Inserts the specified text as a comment in the rule.  Everything
+             following // is considered as a comment and stored in the rule.
+             You can have comment-only rules, which are listed as having a
+             ccoouunntt action followed by the comment.
+
+     bbrriiddggeedd
+             Matches only bridged packets.
+
+     ddsstt--iipp _i_p_-_a_d_d_r_e_s_s
+             Matches IP packets whose destination IP is one of the address(es)
+             specified as argument.
+
+     ddsstt--ppoorrtt _p_o_r_t_s
+             Matches IP packets whose destination port is one of the port(s)
+             specified as argument.
+
+     eessttaabblliisshheedd
+             Matches TCP packets that have the RST or ACK bits set.
+
+     ffrraagg    Matches packets that are fragments and not the first fragment of
+             an IP datagram. Note that these packets will not have the next
+             protocol header (e.g. TCP, UDP) so options that look into these
+             headers cannot match.
+
+     ggiidd _g_r_o_u_p
+             Matches all TCP or UDP packets sent by or received for a _g_r_o_u_p.
+             A _g_r_o_u_p may be specified by name or number.
+
+     iiccmmppttyyppeess _t_y_p_e_s
+             Matches ICMP packets whose ICMP type is in the list _t_y_p_e_s.  The
+             list may be specified as any combination of individual types
+             (numeric) separated by commas.  _R_a_n_g_e_s _a_r_e _n_o_t _a_l_l_o_w_e_d_. The sup-
+             ported ICMP types are:
+
+             echo reply (00), destination unreachable (33), source quench (44),
+             redirect (55), echo request (88), router advertisement (99), router
+             solicitation (1100), time-to-live exceeded (1111), IP header bad
+             (1122), timestamp request (1133), timestamp reply (1144), information
+             request (1155), information reply (1166), address mask request (1177)
+             and address mask reply (1188).
+
+     iinn | oouutt
+             Matches incoming or outgoing packets, respectively.  iinn and oouutt
+             are mutually exclusive (in fact, oouutt is implemented as nnoott iinn).
+
+     iippiidd _i_d_-_l_i_s_t
+             Matches IP packets whose iipp__iidd field has value included in
+             _i_d_-_l_i_s_t, which is either a single value or a list of values or
+             ranges specified in the same way as _p_o_r_t_s.
+
+     iipplleenn _l_e_n_-_l_i_s_t
+             Matches IP packets whose total length, including header and data,
+             is in the set _l_e_n_-_l_i_s_t, which is either a single value or a list
+             of values or ranges specified in the same way as _p_o_r_t_s.
+
+     iippooppttiioonnss _s_p_e_c
+             Matches packets whose IP header contains the comma separated list
+             of options specified in _s_p_e_c.  The supported IP options are:
+
+             ssssrrrr (strict source route), llssrrrr (loose source route), rrrr (record
+             packet route) and ttss (timestamp).  The absence of a particular
+             option may be denoted with a `!'.
+
+     iipppprreecceeddeennccee _p_r_e_c_e_d_e_n_c_e
+             Matches IP packets whose precedence field is equal to _p_r_e_c_e_d_e_n_c_e.
+
+     iippsseecc   Matches packets that have IPSEC history associated with them
+             (i.e. the packet comes encapsulated in IPSEC, the kernel has
+             IPSEC support and IPSEC_FILTERGIF option, and can correctly
+             decapsulate it).
+
+             Note that specifying iippsseecc is different from specifying pprroottoo
+             _i_p_s_e_c as the latter will only look at the specific IP protocol
+             field, irrespective of IPSEC kernel support and the validity of
+             the IPSEC data.
+
+     iippttooss _s_p_e_c
+             Matches IP packets whose ttooss field contains the comma separated
+             list of service types specified in _s_p_e_c.  The supported IP types
+             of service are:
+
+             lloowwddeellaayy (IPTOS_LOWDELAY), tthhrroouugghhppuutt (IPTOS_THROUGHPUT),
+             rreelliiaabbiilliittyy (IPTOS_RELIABILITY), mmiinnccoosstt (IPTOS_MINCOST),
+             ccoonnggeessttiioonn (IPTOS_CE).  The absence of a particular type may be
+             denoted with a `!'.
+
+     iippttttll _t_t_l_-_l_i_s_t
+             Matches IP packets whose time to live is included in _t_t_l_-_l_i_s_t,
+             which is either a single value or a list of values or ranges
+             specified in the same way as _p_o_r_t_s.
+
+     iippvveerrssiioonn _v_e_r
+             Matches IP packets whose IP version field is _v_e_r.
+
+     kkeeeepp--ssttaattee
+             Upon a match, the firewall will create a dynamic rule, whose
+             default behaviour is to match bidirectional traffic between
+             source and destination IP/port using the same protocol.  The rule
+             has a limited lifetime (controlled by a set of sysctl(8) vari-
+             ables), and the lifetime is refreshed every time a matching
+             packet is found.
+
+     llaayyeerr22  Matches only layer2 packets, i.e. those passed to iippffww from
+             ether_demux() and ether_output_frame().
+
+     lliimmiitt {ssrrcc--aaddddrr | ssrrcc--ppoorrtt | ddsstt--aaddddrr | ddsstt--ppoorrtt} _N
+             The firewall will only allow _N connections with the same set of
+             parameters as specified in the rule.  One or more of source and
+             destination addresses and ports can be specified.
+
+     {{ MMAACC | mmaacc }} _d_s_t_-_m_a_c _s_r_c_-_m_a_c
+             Match packets with a given _d_s_t_-_m_a_c and _s_r_c_-_m_a_c addresses, speci-
+             fied as the aannyy keyword (matching any MAC address), or six groups
+             of hex digits separated by colons, and optionally followed by a
+             mask indicating how many bits are significant, as in
+
+                   MAC 10:20:30:40:50:60/33 any
+
+             Note that the order of MAC addresses (destination first, source
+             second) is the same as on the wire, but the opposite of the one
+             used for IP addresses.
+
+     mmaacc--ttyyppee _m_a_c_-_t_y_p_e
+             Matches packets whose Ethernet Type field corresponds to one of
+             those specified as argument.  _m_a_c_-_t_y_p_e is specified in the same
+             way as ppoorrtt nnuummbbeerrss (i.e. one or more comma-separated single val-
+             ues or ranges).  You can use symbolic names for known values such
+             as _v_l_a_n, _i_p_v_4_, _i_p_v_6.  Values can be entered as decimal or hexa-
+             decimal (if prefixed by 0x), and they are always printed as hexa-
+             decimal (unless the --NN option is used, in which case symbolic
+             resolution will be attempted).
+
+     pprroottoo _p_r_o_t_o_c_o_l
+             Matches packets with the corresponding IPv4 protocol.
+
+     rreeccvv | xxmmiitt | vviiaa {_i_f_X | _i_f** | _i_p_n_o | _a_n_y}
+             Matches packets received, transmitted or going through, respec-
+             tively, the interface specified by exact name (_i_f_X), by device
+             name (_i_f_*), by IP address, or through some interface.
+
+             The vviiaa keyword causes the interface to always be checked.  If
+             rreeccvv or xxmmiitt is used instead of vviiaa, then only the receive or
+             transmit interface (respectively) is checked.  By specifying
+             both, it is possible to match packets based on both receive and
+             transmit interface, e.g.:
+
+                   ipfw add deny ip from any to any out recv ed0 xmit ed1
+
+             The rreeccvv interface can be tested on either incoming or outgoing
+             packets, while the xxmmiitt interface can only be tested on outgoing
+             packets.  So oouutt is required (and iinn is invalid) whenever xxmmiitt is
+             used.
+
+             A packet may not have a receive or transmit interface: packets
+             originating from the local host have no receive interface, while
+             packets destined for the local host have no transmit interface.
+
+     sseettuupp   Matches TCP packets that have the SYN bit set but no ACK bit.
+             This is the short form of ``tcpflags syn,!ack''.
+
+     ssrrcc--iipp _i_p_-_a_d_d_r_e_s_s
+             Matches IP packets whose source IP is one of the address(es)
+             specified as argument.
+
+     ssrrcc--ppoorrtt _p_o_r_t_s
+             Matches IP packets whose source port is one of the port(s) speci-
+             fied as argument.
+
+     ttccppaacckk _a_c_k
+             TCP packets only.  Match if the TCP header acknowledgment number
+             field is set to _a_c_k.
+
+     ttccppffllaaggss _s_p_e_c
+             TCP packets only.  Match if the TCP header contains the comma
+             separated list of flags specified in _s_p_e_c.  The supported TCP
+             flags are:
+
+             ffiinn, ssyynn, rrsstt, ppsshh, aacckk and uurrgg.  The absence of a particular
+             flag may be denoted with a `!'.  A rule which contains a ttccppffllaaggss
+             specification can never match a fragmented packet which has a
+             non-zero offset.  See the ffrraagg option for details on matching
+             fragmented packets.
+
+     ttccppsseeqq _s_e_q
+             TCP packets only.  Match if the TCP header sequence number field
+             is set to _s_e_q.
+
+     ttccppwwiinn _w_i_n
+             TCP packets only.  Match if the TCP header window field is set to
+             _w_i_n.
+
+     ttccppooppttiioonnss _s_p_e_c
+             TCP packets only.  Match if the TCP header contains the comma
+             separated list of options specified in _s_p_e_c.  The supported TCP
+             options are:
+
+             mmssss (maximum segment size), wwiinnddooww (tcp window advertisement),
+             ssaacckk (selective ack), ttss (rfc1323 timestamp) and cccc (rfc1644
+             t/tcp connection count).  The absence of a particular option may
+             be denoted with a `!'.
+
+     uuiidd _u_s_e_r
+             Match all TCP or UDP packets sent by or received for a _u_s_e_r.  A
+             _u_s_e_r may be matched by name or identification number.
+
+     vveerrrreevvppaatthh
+             For incoming packets, a routing table lookup is done on the
+             packet's source address.  If the interface on which the packet
+             entered the system matches the outgoing interface for the route,
+             the packet matches.  If the interfaces do not match up, the
+             packet does not match.  All outgoing packets or packets with no
+             incoming interface match.
+
+             The name and functionality of the option is intentionally similar
+             to the Cisco IOS command:
+
+                   ip verify unicast reverse-path
+
+             This option can be used to make anti-spoofing rules.
+
+SSEETTSS OOFF RRUULLEESS
+     Each rule belongs to one of 32 different _s_e_t_s , numbered 0 to 31.  Set 31
+     is reserved for the default rule.
+
+     By default, rules are put in set 0, unless you use the sseett NN attribute
+     when entering a new rule.  Sets can be individually and atomically
+     enabled or disabled, so this mechanism permits an easy way to store mul-
+     tiple configurations of the firewall and quickly (and atomically) switch
+     between them.  The command to enable/disable sets is
+
+           iippffww sseett [ddiissaabbllee _n_u_m_b_e_r _._._.] [eennaabbllee _n_u_m_b_e_r _._._.]
+
+     where multiple eennaabbllee or ddiissaabbllee sections can be specified.  Command exe-
+     cution is atomic on all the sets specified in the command.  By default,
+     all sets are enabled.
+
+     When you disable a set, its rules behave as if they do not exist in the
+     firewall configuration, with only one exception:
+
+           dynamic rules created from a rule before it had been disabled will
+           still be active until they expire. In order to delete dynamic rules
+           you have to explicitly delete the parent rule which generated them.
+
+     The set number of rules can be changed with the command
+
+           iippffww sseett mmoovvee {rruullee _r_u_l_e_-_n_u_m_b_e_r | _o_l_d_-_s_e_t} ttoo _n_e_w_-_s_e_t
+
+     Also, you can atomically swap two rulesets with the command
+
+           iippffww sseett sswwaapp _f_i_r_s_t_-_s_e_t _s_e_c_o_n_d_-_s_e_t
+
+     See the _E_X_A_M_P_L_E_S Section on some possible uses of sets of rules.
+
+SSTTAATTEEFFUULL FFIIRREEWWAALLLL
+     Stateful operation is a way for the firewall to dynamically create rules
+     for specific flows when packets that match a given pattern are detected.
+     Support for stateful operation comes through the cchheecckk--ssttaattee, kkeeeepp--ssttaattee
+     and lliimmiitt options of rruulleess..
+
+     Dynamic rules are created when a packet matches a kkeeeepp--ssttaattee or lliimmiitt
+     rule, causing the creation of a _d_y_n_a_m_i_c rule which will match all and
+     only packets with a given _p_r_o_t_o_c_o_l between a _s_r_c_-_i_p_/_s_r_c_-_p_o_r_t
+     _d_s_t_-_i_p_/_d_s_t_-_p_o_r_t pair of addresses ( _s_r_c and _d_s_t are used here only to
+     denote the initial match addresses, but they are completely equivalent
+     afterwards).  Dynamic rules will be checked at the first cchheecckk--ssttaattee,,
+     kkeeeepp--ssttaattee or lliimmiitt occurrence, and the action performed upon a match
+     will be the same as in the parent rule.
+
+     Note that no additional attributes other than protocol and IP addresses
+     and ports are checked on dynamic rules.
+
+     The typical use of dynamic rules is to keep a closed firewall configura-
+     tion, but let the first TCP SYN packet from the inside network install a
+     dynamic rule for the flow so that packets belonging to that session will
+     be allowed through the firewall:
+
+           ipfw add check-state
+           ipfw add allow tcp from my-subnet to any setup keep-state
+           ipfw add deny tcp from any to any
+
+     A similar approach can be used for UDP, where an UDP packet coming from
+     the inside will install a dynamic rule to let the response through the
+     firewall:
+
+           ipfw add check-state
+           ipfw add allow udp from my-subnet to any keep-state
+           ipfw add deny udp from any to any
+
+     Dynamic rules expire after some time, which depends on the status of the
+     flow and the setting of some ssyyssccttll variables.  See Section _S_Y_S_C_T_L
+     _V_A_R_I_A_B_L_E_S for more details.  For TCP sessions, dynamic rules can be
+     instructed to periodically send keepalive packets to refresh the state of
+     the rule when it is about to expire.
+
+     See Section _E_X_A_M_P_L_E_S for more examples on how to use dynamic rules.
+
+TTRRAAFFFFIICC SSHHAAPPEERR ((DDUUMMMMYYNNEETT)) CCOONNFFIIGGUURRAATTIIOONN
+     iippffww is also the user interface for the dummynet(4) traffic shaper.
+
+     dduummmmyynneett operates by first using the firewall to classify packets and
+     divide them into _f_l_o_w_s, using any match pattern that can be used in iippffww
+     rules.  Depending on local policies, a flow can contain packets for a
+     single TCP connection, or from/to a given host, or entire subnet, or a
+     protocol type, etc.
+
+     Packets belonging to the same flow are then passed to either of two dif-
+     ferent objects, which implement the traffic regulation:
+
+         _p_i_p_e    A pipe emulates a link with given bandwidth, propagation
+                 delay, queue size and packet loss rate.  Packets are queued
+                 in front of the pipe as they come out from the classifier,
+                 and then transferred to the pipe according to the pipe's
+                 parameters.
+
+         _q_u_e_u_e   A queue is an abstraction used to implement the WF2Q+ (Worst-
+                 case Fair Weighted Fair Queueing) policy, which is an effi-
+                 cient variant of the WFQ policy.
+                 The queue associates a _w_e_i_g_h_t and a reference pipe to each
+                 flow, and then all backlogged (i.e., with packets queued)
+                 flows linked to the same pipe share the pipe's bandwidth pro-
+                 portionally to their weights.  Note that weights are not pri-
+                 orities; a flow with a lower weight is still guaranteed to
+                 get its fraction of the bandwidth even if a flow with a
+                 higher weight is permanently backlogged.
+
+     In practice, _p_i_p_e_s can be used to set hard limits to the bandwidth that a
+     flow can use, whereas _q_u_e_u_e_s can be used to determine how different flow
+     share the available bandwidth.
+
+     The _p_i_p_e and _q_u_e_u_e configuration commands are the following:
+
+           ppiippee _n_u_m_b_e_r ccoonnffiigg _p_i_p_e_-_c_o_n_f_i_g_u_r_a_t_i_o_n
+
+           qquueeuuee _n_u_m_b_e_r ccoonnffiigg _q_u_e_u_e_-_c_o_n_f_i_g_u_r_a_t_i_o_n
+
+     The following parameters can be configured for a pipe:
+
+     bbww _b_a_n_d_w_i_d_t_h | _d_e_v_i_c_e
+             Bandwidth, measured in [KK|MM]{bbiitt//ss|BByyttee//ss}.
+
+             A value of 0 (default) means unlimited bandwidth.  The unit must
+             immediately follow the number, as in
+
+                   ipfw pipe 1 config bw 300Kbit/s
+
+             If a device name is specified instead of a numeric value, as in
+
+                   ipfw pipe 1 config bw tun0
+
+             then the transmit clock is supplied by the specified device.  At
+             the moment only the tun(4) device supports this functionality,
+             for use in conjunction with ppp(8).
+
+     ddeellaayy _m_s_-_d_e_l_a_y
+             Propagation delay, measured in milliseconds.  The value is
+             rounded to the next multiple of the clock tick (typically 10ms,
+             but it is a good practice to run kernels with ``options HZ=1000''
+             to reduce the granularity to 1ms or less).  Default value is 0,
+             meaning no delay.
+
+     The following parameters can be configured for a queue:
+
+     ppiippee _p_i_p_e___n_r
+             Connects a queue to the specified pipe.  Multiple queues (with
+             the same or different weights) can be connected to the same pipe,
+             which specifies the aggregate rate for the set of queues.
+
+     wweeiigghhtt _w_e_i_g_h_t
+             Specifies the weight to be used for flows matching this queue.
+             The weight must be in the range 1..100, and defaults to 1.
+
+     Finally, the following parameters can be configured for both pipes and
+     queues:
+
+     bbuucckkeettss _h_a_s_h_-_t_a_b_l_e_-_s_i_z_e
+           Specifies the size of the hash table used for storing the various
+           queues.  Default value is 64 controlled by the sysctl(8) variable
+           _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._h_a_s_h___s_i_z_e, allowed range is 16 to 65536.
+
+     mmaasskk _m_a_s_k_-_s_p_e_c_i_f_i_e_r
+           Packets sent to a given pipe or queue by an iippffww rule can be fur-
+           ther classified into multiple flows, each of which is then sent to
+           a different _d_y_n_a_m_i_c pipe or queue.  A flow identifier is con-
+           structed by masking the IP addresses, ports and protocol types as
+           specified with the mmaasskk options in the configuration of the pipe or
+           queue.  For each different flow identifier, a new pipe or queue is
+           created with the same parameters as the original object, and match-
+           ing packets are sent to it.
+
+           Thus, when _d_y_n_a_m_i_c _p_i_p_e_s are used, each flow will get the same
+           bandwidth as defined by the pipe, whereas when _d_y_n_a_m_i_c _q_u_e_u_e_s are
+           used, each flow will share the parent's pipe bandwidth evenly with
+           other flows generated by the same queue (note that other queues
+           with different weights might be connected to the same pipe).
+           Available mask specifiers are a combination of one or more of the
+           following:
+
+           ddsstt--iipp _m_a_s_k, ssrrcc--iipp _m_a_s_k, ddsstt--ppoorrtt _m_a_s_k, ssrrcc--ppoorrtt _m_a_s_k, pprroottoo _m_a_s_k
+           or aallll,
+
+           where the latter means all bits in all fields are significant.
+
+     nnooeerrrroorr
+           When a packet is dropped by a dummynet queue or pipe, the error is
+           normally reported to the caller routine in the kernel, in the same
+           way as it happens when a device queue fills up. Setting this option
+           reports the packet as successfully delivered, which can be needed
+           for some experimental setups where you want to simulate loss or
+           congestion at a remote router.
+
+     ppllrr _p_a_c_k_e_t_-_l_o_s_s_-_r_a_t_e
+           Packet loss rate.  Argument _p_a_c_k_e_t_-_l_o_s_s_-_r_a_t_e is a floating-point
+           number between 0 and 1, with 0 meaning no loss, 1 meaning 100%
+           loss.  The loss rate is internally represented on 31 bits.
+
+     qquueeuuee {_s_l_o_t_s | _s_i_z_eKKbbyytteess}
+           Queue size, in _s_l_o_t_s or KKBByytteess.  Default value is 50 slots, which
+           is the typical queue size for Ethernet devices.  Note that for slow
+           speed links you should keep the queue size short or your traffic
+           might be affected by a significant queueing delay.  E.g., 50 max-
+           sized ethernet packets (1500 bytes) mean 600Kbit or 20s of queue on
+           a 30Kbit/s pipe.  Even worse effect can result if you get packets
+           from an interface with a much larger MTU, e.g. the loopback inter-
+           face with its 16KB packets.
+
+     rreedd | ggrreedd _w___q/_m_i_n___t_h/_m_a_x___t_h/_m_a_x___p
+           Make use of the RED (Random Early Detection) queue management algo-
+           rithm.  _w___q and _m_a_x___p are floating point numbers between 0 and 1 (0
+           not included), while _m_i_n___t_h and _m_a_x___t_h are integer numbers specify-
+           ing thresholds for queue management (thresholds are computed in
+           bytes if the queue has been defined in bytes, in slots otherwise).
+           The dummynet(4) also supports the gentle RED variant (gred).  Three
+           sysctl(8) variables can be used to control the RED behaviour:
+
+           _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._r_e_d___l_o_o_k_u_p___d_e_p_t_h
+                   specifies the accuracy in computing the average queue when
+                   the link is idle (defaults to 256, must be greater than
+                   zero)
+
+           _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._r_e_d___a_v_g___p_k_t___s_i_z_e
+                   specifies the expected average packet size (defaults to
+                   512, must be greater than zero)
+
+           _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._r_e_d___m_a_x___p_k_t___s_i_z_e
+                   specifies the expected maximum packet size, only used when
+                   queue thresholds are in bytes (defaults to 1500, must be
+                   greater than zero).
+
+CCHHEECCKKLLIISSTT
+     Here are some important points to consider when designing your rules:
+
+     ++oo   Remember that you filter both packets going iinn and oouutt.  Most connec-
+         tions need packets going in both directions.
+
+     ++oo   Remember to test very carefully.  It is a good idea to be near the
+         console when doing this.  If you cannot be near the console, use an
+         auto-recovery script such as the one in
+         _/_u_s_r_/_s_h_a_r_e_/_e_x_a_m_p_l_e_s_/_i_p_f_w_/_c_h_a_n_g_e___r_u_l_e_s_._s_h.
+
+     ++oo   Don't forget the loopback interface.
+
+FFIINNEE PPOOIINNTTSS
+     ++oo   There are circumstances where fragmented datagrams are uncondition-
+         ally dropped.  TCP packets are dropped if they do not contain at
+         least 20 bytes of TCP header, UDP packets are dropped if they do not
+         contain a full 8 byte UDP header, and ICMP packets are dropped if
+         they do not contain 4 bytes of ICMP header, enough to specify the
+         ICMP type, code, and checksum.  These packets are simply logged as
+         ``pullup failed'' since there may not be enough good data in the
+         packet to produce a meaningful log entry.
+
+     ++oo   Another type of packet is unconditionally dropped, a TCP packet with
+         a fragment offset of one.  This is a valid packet, but it only has
+         one use, to try to circumvent firewalls.  When logging is enabled,
+         these packets are reported as being dropped by rule -1.
+
+     ++oo   The iippffww filter list may not be modified if the system security level
+         is set to 3 or higher.
+
+PPAACCKKEETT DDIIVVEERRSSIIOONN
+     A divert(4) socket bound to the specified port will receive all packets
+     diverted to that port.  If no socket is bound to the destination port, or
+     if the kernel wasn't compiled with divert socket support, the packets are
+     dropped.
+
+SSYYSSCCTTLL VVAARRIIAABBLLEESS
+     A set of sysctl(8) variables controls the behaviour of the firewall and
+     associated modules ( dduummmmyynneett,, bbrriiddggee ).  These are shown below together
+     with their default value (but always check with the sysctl(8) command
+     what value is actually in use) and meaning:
+
+     _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._e_x_p_i_r_e: 1
+             Lazily delete dynamic pipes/queue once they have no pending traf-
+             fic.  You can disable this by setting the variable to 0, in which
+             case the pipes/queues will only be deleted when the threshold is
+             reached.
+
+     _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._h_a_s_h___s_i_z_e: 64
+             Default size of the hash table used for dynamic pipes/queues.
+             This value is used when no bbuucckkeettss option is specified when con-
+             figuring a pipe/queue.
+
+     _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._m_a_x___c_h_a_i_n___l_e_n: 16
+             Target value for the maximum number of pipes/queues in a hash
+             bucket.  The product mmaaxx__cchhaaiinn__lleenn**hhaasshh__ssiizzee is used to determine
+             the threshold over which empty pipes/queues will be expired even
+             when nneett..iinneett..iipp..dduummmmyynneett..eexxppiirree==00.
+
+     _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._r_e_d___l_o_o_k_u_p___d_e_p_t_h: 256
+
+     _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._r_e_d___a_v_g___p_k_t___s_i_z_e: 512
+
+     _n_e_t_._i_n_e_t_._i_p_._d_u_m_m_y_n_e_t_._r_e_d___m_a_x___p_k_t___s_i_z_e: 1500
+             Parameters used in the computations of the drop probability for
+             the RED algorithm.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._a_u_t_o_i_n_c___s_t_e_p: 100
+             Delta between rule numbers when auto-generating them.  The value
+             must be in the range 1..1000.  This variable is only present in
+             iippffww22, the delta is hardwired to 100 in iippffww11.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._c_u_r_r___d_y_n___b_u_c_k_e_t_s: _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___b_u_c_k_e_t_s
+             The current number of buckets in the hash table for dynamic rules
+             (readonly).
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_e_b_u_g: 1
+             Controls debugging messages produced by iippffww.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___b_u_c_k_e_t_s: 256
+             The number of buckets in the hash table for dynamic rules.  Must
+             be a power of 2, up to 65536.  It only takes effect when all
+             dynamic rules have expired, so you are advised to use a fflluusshh
+             command to make sure that the hash table is resized.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___c_o_u_n_t: 3
+             Current number of dynamic rules (read-only).
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___k_e_e_p_a_l_i_v_e: 1
+             Enables generation of keepalive packets for kkeeeepp--ssttaattee rules on
+             TCP sessions. A keepalive is generated to both sides of the con-
+             nection every 5 seconds for the last 20 seconds of the lifetime
+             of the rule.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___m_a_x: 8192
+             Maximum number of dynamic rules.  When you hit this limit, no
+             more dynamic rules can be installed until old ones expire.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___a_c_k___l_i_f_e_t_i_m_e: 300
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___s_y_n___l_i_f_e_t_i_m_e: 20
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___f_i_n___l_i_f_e_t_i_m_e: 1
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___r_s_t___l_i_f_e_t_i_m_e: 1
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___u_d_p___l_i_f_e_t_i_m_e: 5
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._d_y_n___s_h_o_r_t___l_i_f_e_t_i_m_e: 30
+             These variables control the lifetime, in seconds, of dynamic
+             rules.  Upon the initial SYN exchange the lifetime is kept short,
+             then increased after both SYN have been seen, then decreased
+             again during the final FIN exchange or when a RST is received.
+             Both _d_y_n___f_i_n___l_i_f_e_t_i_m_e and _d_y_n___r_s_t___l_i_f_e_t_i_m_e must be strictly lower
+             than 5 seconds, the period of repetition of keepalives. The fire-
+             wall enforces that.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._e_n_a_b_l_e: 1
+             Enables the firewall.  Setting this variable to 0 lets you run
+             your machine without firewall even if compiled in.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._o_n_e___p_a_s_s: 1
+             When set, the packet exiting from the dummynet(4) pipe is not
+             passed though the firewall again.  Otherwise, after a pipe
+             action, the packet is reinjected into the firewall at the next
+             rule.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._v_e_r_b_o_s_e: 1
+             Enables verbose messages.
+
+     _n_e_t_._i_n_e_t_._i_p_._f_w_._v_e_r_b_o_s_e___l_i_m_i_t: 0
+             Limits the number of messages produced by a verbose firewall.
+
+     _n_e_t_._l_i_n_k_._e_t_h_e_r_._i_p_f_w: 0
+             Controls whether layer-2 packets are passed to iippffww.  Default is
+             no.
+
+     _n_e_t_._l_i_n_k_._e_t_h_e_r_._b_r_i_d_g_e___i_p_f_w: 0
+             Controls whether bridged packets are passed to iippffww.  Default is
+             no.
+
+IIPPFFWW22 EENNHHAANNCCEEMMEENNTTSS
+     This Section lists the features that have been introduced in iippffww22 which
+     were not present in iippffww11.  We list them in order of the potential impact
+     that they can have in writing your rulesets.  You might want to consider
+     using these features in order to write your rulesets in a more efficient
+     way.
+
+     Syntax and flags
+             iippffww11 does not support the -n flag (only test syntax), nor it
+             allows spaces after commas or supports all rule fields in a sin-
+             gle argument.
+
+     Handling of non-IPv4 packets
+             iippffww11 will silently accept all non-IPv4 packets (which iippffww11 will
+             only see when _n_e_t_._l_i_n_k_._e_t_h_e_r_._b_r_i_d_g_e___i_p_f_w_=_1).  iippffww22 will filter
+             all packets (including non-IPv4 ones) according to the ruleset.
+             To achieve the same behaviour as iippffww11 you can use the following
+             as the very first rule in your ruleset:
+
+                   ipfw add 1 allow layer2 not mac-type ip
+
+             The llaayyeerr22 option might seem redundant, but it is necessary --
+             packets passed to the firewall from layer3 will not have a MAC
+             header, so the mmaacc--ttyyppee iipp pattern will always fail on them, and
+             the nnoott operator will make this rule into a pass-all.
+
+     Addresses
+             iippffww11 does not supports address sets or lists of addresses.
+
+     Port specifications
+             iippffww11 only allows one port range when specifying TCP and UDP
+             ports, and is limited to 10 entries instead of the 15 allowed by
+             iippffww22.  Also, in iippffww11 you can only specify ports when the rule
+             is requesting ttccpp or uuddpp packets. With iippffww22 you can put port
+             specifications in rules matching all packets, and the match will
+             be attempted only on those packets carrying protocols which
+             include port identifiers.
+
+             Finally, iippffww11 allowed the first port entry to be specified as
+             _p_o_r_t_:_m_a_s_k where _m_a_s_k can be an arbitrary 16-bit mask.  This syn-
+             tax is of questionable usefulness and it is not supported anymore
+             in iippffww22.
+
+     Or-blocks
+             iippffww11 does not support Or-blocks.
+
+     keepalives
+             iippffww11 does not generate keepalives for stateful sessions.  As a
+             consequence, it might cause idle sessions to drop because the
+             lifetime of the dynamic rules expires.
+
+     Sets of rules
+             iippffww11 does not implement sets of rules.
+
+     MAC header filtering and Layer-2 firewalling.
+             iippffww11 does not implement filtering on MAC header fields, nor is
+             it invoked on packets from eetthheerr__ddeemmuuxx(()) and
+             eetthheerr__oouuttppuutt__ffrraammee(()).. The sysctl variable _n_e_t_._l_i_n_k_._e_t_h_e_r_._i_p_f_w has
+             no effect there.
+
+     Options
+             In iippffww11, the following options only accept a single value as an
+             argument:
+
+             iippiidd,, iipplleenn,, iippttttll
+
+             The following options are not implemented by iippffww11:
+
+             ddsstt--iipp,, ddsstt--ppoorrtt,, llaayyeerr22,, mmaacc,, mmaacc--ttyyppee,, ssrrcc--iipp,, ssrrcc--ppoorrtt..
+
+             Additionally, the RELENG_4 version of iippffww11 does not implement
+             the following options:
+
+             iippiidd,, iipplleenn,, iipppprreecceeddeennccee,, iippttooss,, iippttttll,, iippvveerrssiioonn,, ttccppaacckk,,
+             ttccppsseeqq,, ttccppwwiinn.
+
+     Dummynet options
+             The following option for dduummmmyynneett pipes/queues is not supported:
+             nnooeerrrroorr.
+
+EEXXAAMMPPLLEESS
+     There are far too many possible uses of iippffww so this Section will only
+     give a small set of examples.
+
+   BBAASSIICC PPAACCKKEETT FFIILLTTEERRIINNGG
+     This command adds an entry which denies all tcp packets from
+     _c_r_a_c_k_e_r_._e_v_i_l_._o_r_g to the telnet port of _w_o_l_f_._t_a_m_b_o_v_._s_u from being for-
+     warded by the host:
+
+           ipfw add deny tcp from cracker.evil.org to wolf.tambov.su telnet
+
+     This one disallows any connection from the entire cracker's network to my
+     host:
+
+           ipfw add deny ip from 123.45.67.0/24 to my.host.org
+
+     A first and efficient way to limit access (not using dynamic rules) is
+     the use of the following rules:
+
+           ipfw add allow tcp from any to any established
+           ipfw add allow tcp from net1 portlist1 to net2 portlist2 setup
+           ipfw add allow tcp from net3 portlist3 to net3 portlist3 setup
+           ...
+           ipfw add deny tcp from any to any
+
+     The first rule will be a quick match for normal TCP packets, but it will
+     not match the initial SYN packet, which will be matched by the sseettuupp
+     rules only for selected source/destination pairs.  All other SYN packets
+     will be rejected by the final ddeennyy rule.
+
+     If you administer one or more subnets, you can take advantage of the
+     iippffww22 syntax to specify address sets and or-blocks and write extremely
+     compact rulesets which selectively enable services to blocks of clients,
+     as below:
+
+           goodguys="{ 10.1.2.0/24{20,35,66,18} or 10.2.3.0/28{6,3,11} }"
+           badguys="10.1.2.0/24{8,38,60}"
+
+           ipfw add allow ip from ${goodguys} to any
+           ipfw add deny ip from ${badguys} to any
+           ... normal policies ...
+
+     The iippffww11 syntax would require a separate rule for each IP in the above
+     example.
+
+     The vveerrrreevvppaatthh option could be used to do automated anti-spoofing by
+     adding the following to the top of a ruleset:
+
+           ipfw add deny ip from any to any not verrevpath in
+
+     This rule drops all incoming packets that appear to be coming to the
+     sytem on the wrong interface. For example, a packet with a source address
+     belonging to a host on a protected internal network would be dropped if
+     it tried to enter the system from an external interface.
+
+   DDYYNNAAMMIICC RRUULLEESS
+     In order to protect a site from flood attacks involving fake TCP packets,
+     it is safer to use dynamic rules:
+
+           ipfw add check-state
+           ipfw add deny tcp from any to any established
+           ipfw add allow tcp from my-net to any setup keep-state
+
+     This will let the firewall install dynamic rules only for those connec-
+     tion which start with a regular SYN packet coming from the inside of our
+     network.  Dynamic rules are checked when encountering the first
+     cchheecckk--ssttaattee or kkeeeepp--ssttaattee rule.  A cchheecckk--ssttaattee rule should usually be
+     placed near the beginning of the ruleset to minimize the amount of work
+     scanning the ruleset.  Your mileage may vary.
+
+     To limit the number of connections a user can open you can use the fol-
+     lowing type of rules:
+
+           ipfw add allow tcp from my-net/24 to any setup limit src-addr 10
+           ipfw add allow tcp from any to me setup limit src-addr 4
+
+     The former (assuming it runs on a gateway) will allow each host on a /24
+     network to open at most 10 TCP connections.  The latter can be placed on
+     a server to make sure that a single client does not use more than 4
+     simultaneous connections.
+
+     _B_E_W_A_R_E: stateful rules can be subject to denial-of-service attacks by a
+     SYN-flood which opens a huge number of dynamic rules.  The effects of
+     such attacks can be partially limited by acting on a set of sysctl(8)
+     variables which control the operation of the firewall.
+
+     Here is a good usage of the lliisstt command to see accounting records and
+     timestamp information:
+
+           ipfw -at list
+
+     or in short form without timestamps:
+
+           ipfw -a list
+
+     which is equivalent to:
+
+           ipfw show
+
+     Next rule diverts all incoming packets from 192.168.2.0/24 to divert port
+     5000:
+
+           ipfw divert 5000 ip from 192.168.2.0/24 to any in
+
+   TTRRAAFFFFIICC SSHHAAPPIINNGG
+     The following rules show some of the applications of iippffww and dummynet(4)
+     for simulations and the like.
+
+     This rule drops random incoming packets with a probability of 5%:
+
+           ipfw add prob 0.05 deny ip from any to any in
+
+     A similar effect can be achieved making use of dummynet pipes:
+
+           ipfw add pipe 10 ip from any to any
+           ipfw pipe 10 config plr 0.05
+
+     We can use pipes to artificially limit bandwidth, e.g. on a machine act-
+     ing as a router, if we want to limit traffic from local clients on
+     192.168.2.0/24 we do:
+
+           ipfw add pipe 1 ip from 192.168.2.0/24 to any out
+           ipfw pipe 1 config bw 300Kbit/s queue 50KBytes
+
+     note that we use the oouutt modifier so that the rule is not used twice.
+     Remember in fact that iippffww rules are checked both on incoming and outgo-
+     ing packets.
+
+     Should we want to simulate a bidirectional link with bandwidth limita-
+     tions, the correct way is the following:
+
+           ipfw add pipe 1 ip from any to any out
+           ipfw add pipe 2 ip from any to any in
+           ipfw pipe 1 config bw 64Kbit/s queue 10Kbytes
+           ipfw pipe 2 config bw 64Kbit/s queue 10Kbytes
+
+     The above can be very useful, e.g. if you want to see how your fancy Web
+     page will look for a residential user who is connected only through a
+     slow link.  You should not use only one pipe for both directions, unless
+     you want to simulate a half-duplex medium (e.g. AppleTalk, Ethernet,
+     IRDA).  It is not necessary that both pipes have the same configuration,
+     so we can also simulate asymmetric links.
+
+     Should we want to verify network performance with the RED queue manage-
+     ment algorithm:
+
+           ipfw add pipe 1 ip from any to any
+           ipfw pipe 1 config bw 500Kbit/s queue 100 red 0.002/30/80/0.1
+
+     Another typical application of the traffic shaper is to introduce some
+     delay in the communication.  This can significantly affect applications
+     which do a lot of Remote Procedure Calls, and where the round-trip-time
+     of the connection often becomes a limiting factor much more than band-
+     width:
+
+           ipfw add pipe 1 ip from any to any out
+           ipfw add pipe 2 ip from any to any in
+           ipfw pipe 1 config delay 250ms bw 1Mbit/s
+           ipfw pipe 2 config delay 250ms bw 1Mbit/s
+
+     Per-flow queueing can be useful for a variety of purposes.  A very simple
+     one is counting traffic:
+
+           ipfw add pipe 1 tcp from any to any
+           ipfw add pipe 1 udp from any to any
+           ipfw add pipe 1 ip from any to any
+           ipfw pipe 1 config mask all
+
+     The above set of rules will create queues (and collect statistics) for
+     all traffic.  Because the pipes have no limitations, the only effect is
+     collecting statistics.  Note that we need 3 rules, not just the last one,
+     because when iippffww tries to match IP packets it will not consider ports,
+     so we would not see connections on separate ports as different ones.
+
+     A more sophisticated example is limiting the outbound traffic on a net
+     with per-host limits, rather than per-network limits:
+
+           ipfw add pipe 1 ip from 192.168.2.0/24 to any out
+           ipfw add pipe 2 ip from any to 192.168.2.0/24 in
+           ipfw pipe 1 config mask src-ip 0x000000ff bw 200Kbit/s queue
+           20Kbytes
+           ipfw pipe 2 config mask dst-ip 0x000000ff bw 200Kbit/s queue
+           20Kbytes
+
+   SSEETTSS OOFF RRUULLEESS
+     To add a set of rules atomically, e.g. set 18:
+
+           ipfw set disable 18
+           ipfw add NN set 18 ...         # repeat as needed
+           ipfw set enable 18
+
+     To delete a set of rules atomically the command is simply:
+
+           ipfw delete set 18
+
+     To test a ruleset and disable it and regain control if something goes
+     wrong:
+
+           ipfw set disable 18
+           ipfw add NN set 18 ...         # repeat as needed
+           ipfw set enable 18; echo done; sleep 30 && ipfw set disable 18
+
+     Here if everything goes well, you press control-C before the "sleep" ter-
+     minates, and your ruleset will be left active. Otherwise, e.g. if you
+     cannot access your box, the ruleset will be disabled after the sleep ter-
+     minates thus restoring the previous situation.
+
+SSEEEE AALLSSOO
+     cpp(1), m4(1), divert(4), dummynet(4), ip(4), ipfirewall(4),
+     protocols(5), services(5), reboot(8), sysctl(8), syslogd(8)
+
+BBUUGGSS
+     The syntax has grown over the years and sometimes it might be confusing.
+     Unfortunately, backward compatibility prevents cleaning up mistakes made
+     in the definition of the syntax.
+
+     _!_!_! _W_A_R_N_I_N_G _!_!_!
+
+     Misconfiguring the firewall can put your computer in an unusable state,
+     possibly shutting down network services and requiring console access to
+     regain control of it.
+
+     Incoming packet fragments diverted by ddiivveerrtt or tteeee are reassembled
+     before delivery to the socket.  The action used on those packet is the
+     one from the rule which matches the first fragment of the packet.
+
+     Packets that match a tteeee rule should not be immediately accepted, but
+     should continue going through the rule list.  This may be fixed in a
+     later version.
+
+     Packets diverted to userland, and then reinserted by a userland process
+     may lose various packet attributes.  The packet source interface name
+     will be preserved if it is shorter than 8 bytes and the userland process
+     saves and reuses the sockaddr_in (as does natd(8)); otherwise, it may be
+     lost.  If a packet is reinserted in this manner, later rules may be
+     incorrectly applied, making the order of ddiivveerrtt rules in the rule
+     sequence very important.
+
+AAUUTTHHOORRSS
+     Ugen J. S. Antsilevich,
+     Poul-Henning Kamp,
+     Alex Nash,
+     Archie Cobbs,
+     Luigi Rizzo.
+
+     API based upon code written by Daniel Boulet for BSDI.
+
+     Work on dummynet(4) traffic shaper supported by Akamba Corp.
+
+HHIISSTTOORRYY
+     The iippffww utility first appeared in FreeBSD 2.0.  dummynet(4) was intro-
+     duced in FreeBSD 2.2.8.  Stateful extensions were introduced in
+     FreeBSD 4.0.  iippffww22 was introduced in Summer 2002.
+
+Darwin                          August 13, 2002                         Darwin

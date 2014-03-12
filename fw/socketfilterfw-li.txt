@@ -1,0 +1,35 @@
+usage: ./socketfilterfw [-c] [-w] [-d] [-l] [-T] [-U] [-B] [-L] [-a listen or accept] [-s file to sign] [-v file to verify] [-p pid to write] [--getglobalstate] [--setglobalstate on | off] [--getblockall] [--setblockall on | off] [--listapps] [--getappblocked <path>] [--blockapp <path>] [--unblockapp <path>] [--add <path>] [--remove <path>] [--getallowsigned] [--setallowsigned] [--getstealthmode] [--setstealthmode on | off] [--getloggingmode] [--setloggingmode on | off] 
+firewallapp is used to control Application Firewall socket filter.
+The command takes the following options that are evaluated in order, 
+and several options may be combined:
+ -h        display this help and exit
+ -t app    set trusted app, e.g. -t app1 app2 app3
+ -i        dump socket filter internal data info
+ -d        turn on debugging
+ -l        do logging and run in daemon mode
+ -k        kill daemon
+ -a        ask when listen or accept, ask "accept" or ask "listen"
+ -s file   sign file
+ -v file   verify file
+ -c        check file
+ --getglobalstate              display if the firewall is enabled or not
+ --setglobalstate on | off     turn the firewall on or off
+ --getblockall                 show whether block all is enabled or not
+ --setblockall on | off        enable or disable block all option
+ --listapps                    display a list of paths of added applications
+ --getappblocked <path>        show whether connections are blocked or not for
+                               the application at <path>
+ --blockapp <path>             block the application at <path>
+ --unblockapp <path>           unblock the application at <path>
+ --add <path>                  add the application at <path> to the firewall
+ --remove <path>               remove the application at <path> from the
+                               firewall
+ --getallowsigned              show whether signed applications are to
+                               automatically receive incoming connections
+ --setallowsigned on | off     set whether signed applications are to
+                               automatically receive incoming connections or not
+ --getstealthmode              show whether stealth mode is on or not
+ --setstealthmode on | off     set stealth mode on or off
+ --getloggingmode              show whether logging is on or not
+ --setloggingmode on | off     set logging to on or off
+

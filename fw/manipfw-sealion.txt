@@ -1,0 +1,10 @@
+
+IPFW(8)                   BSD System Manager's Manual                  IPFW(8)
+
+NNAAMMEE
+     iippffww
+
+DDEESSCCRRIIPPTTIIOONN
+     This utility is DDEEPPRREECCAATTEEDD.. Please use pfctl(8) instead.
+
+Darwin                        September 27, 2012                        Darwin

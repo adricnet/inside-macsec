@@ -1,0 +1,22 @@
+ipfw syntax summary (but please do read the ipfw(8) manpage):
+ipfw [-acdeftTnNpqS] <command> where <command> is one of:
+add [num] [set N] [prob x] RULE-BODY
+{pipe|queue} N config PIPE-BODY
+[pipe|queue] {zero|delete|show} [N{,N}]
+set [disable N... enable N...] | move [rule] X to Y | swap X Y | show
+
+RULE-BODY:	check-state [LOG] | ACTION [LOG] ADDR [OPTION_LIST]
+ACTION:	check-state | allow | count | deny | reject | skipto N |
+		{divert|tee} PORT | forward ADDR | pipe N | queue N
+ADDR:		[ MAC dst src ether_type ] 
+		[ from IPADDR [ PORT ] to IPADDR [ PORTLIST ] ]
+IPADDR:	[not] { any | me | ip/bits{x,y,z} | IPLIST }
+IPLIST:	{ ip | ip/bits | ip:mask }[,IPLIST]
+OPTION_LIST:	OPTION [OPTION_LIST]
+OPTION:	bridged | {dst-ip|src-ip} ADDR | {dst-port|src-port} LIST |
+	estab | frag | {gid|uid} N | icmptypes LIST | in | out | ipid LIST |
+	iplen LIST | ipoptions SPEC | ipprecedence | ipsec | iptos SPEC |
+	ipttl LIST | ipversion VER | keep-state | layer2 | limit ... |
+	mac ... | mac-type LIST | proto LIST | {recv|xmit|via} {IF|IPADDR} |
+	setup | {tcpack|tcpseq|tcpwin} NN | tcpflags SPEC | tcpoptions SPEC |
+	verrevpath
