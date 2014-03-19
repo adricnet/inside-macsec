@@ -1,7 +1,9 @@
 inside-macsec
 =============
 
-Notes, evidence, text, errata, references, and todos from my 2014 paper Inside Mac Security
+Notes, evidence, text, errata, references, and todos from my paper _Inside Mac Security_. It was published by GIAC for the GSEC Gold certification in March 2014. The official released verion is available from GIAC at
+http://www.giac.org/paper/gsec/28443/mac-security/124082 .
+
 
 Abstract
 -------
